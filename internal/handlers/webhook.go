@@ -10,8 +10,8 @@ import (
 	"github.com/naventro/payment-service/internal/models"
 	"github.com/naventro/payment-service/internal/repository"
 	"github.com/naventro/payment-service/internal/webhook"
-	"github.com/stripe/stripe-go/v81"
-	stripewebhook "github.com/stripe/stripe-go/v81/webhook"
+	"github.com/stripe/stripe-go/v84"
+	stripewebhook "github.com/stripe/stripe-go/v84/webhook"
 )
 
 type StripeWebhookHandler struct {
@@ -119,8 +119,12 @@ func (h *StripeWebhookHandler) handleSubscriptionCreated(event stripe.Event) {
 	}
 
 	// Save subscription to database
-	periodStart := time.Unix(sub.CurrentPeriodStart, 0)
-	periodEnd := time.Unix(sub.CurrentPeriodEnd, 0)
+	// In API v84+, period dates are at subscription item level
+	var periodStart, periodEnd time.Time
+	if len(sub.Items.Data) > 0 {
+		periodStart = time.Unix(sub.Items.Data[0].CurrentPeriodStart, 0)
+		periodEnd = time.Unix(sub.Items.Data[0].CurrentPeriodEnd, 0)
+	}
 
 	subscription := &models.Subscription{
 		UserID:               userID,
@@ -165,8 +169,12 @@ func (h *StripeWebhookHandler) handleSubscriptionUpdated(event stripe.Event) {
 	}
 
 	// Update subscription
-	periodStart := time.Unix(sub.CurrentPeriodStart, 0)
-	periodEnd := time.Unix(sub.CurrentPeriodEnd, 0)
+	// In API v84+, period dates are at subscription item level
+	var periodStart, periodEnd time.Time
+	if len(sub.Items.Data) > 0 {
+		periodStart = time.Unix(sub.Items.Data[0].CurrentPeriodStart, 0)
+		periodEnd = time.Unix(sub.Items.Data[0].CurrentPeriodEnd, 0)
+	}
 
 	existingSub.Status = models.SubscriptionStatus(sub.Status)
 	existingSub.CurrentPeriodStart = &periodStart
@@ -224,8 +232,20 @@ func (h *StripeWebhookHandler) handleInvoicePaid(event stripe.Event) {
 		return
 	}
 
+	// In API v84+, subscription is in invoice.Parent.SubscriptionDetails.Subscription
+	if invoice.Parent == nil || invoice.Parent.SubscriptionDetails == nil || invoice.Parent.SubscriptionDetails.Subscription == nil {
+		log.Printf("Invoice %s is not associated with a subscription", invoice.ID)
+		return
+	}
+
+	subscriptionID := invoice.Parent.SubscriptionDetails.Subscription.ID
+	if subscriptionID == "" {
+		log.Printf("No subscription ID found for invoice: %s", invoice.ID)
+		return
+	}
+
 	// Get subscription from database
-	sub, err := h.subRepo.GetByStripeSubscriptionID(invoice.Subscription.ID)
+	sub, err := h.subRepo.GetByStripeSubscriptionID(subscriptionID)
 	if err != nil {
 		log.Printf("Error fetching subscription: %v", err)
 		return

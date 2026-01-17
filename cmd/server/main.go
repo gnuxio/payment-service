@@ -56,6 +56,8 @@ func main() {
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
+		// Disable body limit to allow large webhook payloads
+		BodyLimit: 4 * 1024 * 1024, // 4MB
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {

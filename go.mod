@@ -5,7 +5,7 @@ go 1.25.3
 require (
 	github.com/gofiber/fiber/v2 v2.52.10
 	github.com/lib/pq v1.10.9
-	github.com/stripe/stripe-go/v81 v81.4.0
+	github.com/stripe/stripe-go/v84 v84.2.0
 )
 
 require (
