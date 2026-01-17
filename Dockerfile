@@ -20,8 +20,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 # Final stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests to Stripe
-RUN apk --no-cache add ca-certificates tzdata
+# Install ca-certificates for HTTPS requests to Stripe and wget for healthcheck
+RUN apk --no-cache add ca-certificates tzdata wget
 
 # Create non-root user
 RUN addgroup -g 1000 appuser && \
@@ -32,8 +32,7 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --from=builder /app/main .
 
-# Copy migrations (required for automatic DB setup)
-COPY --from=builder /app/internal/database/migrations ./internal/database/migrations
+# Note: Migrations are embedded in the binary via go:embed, no need to copy separately
 
 # Change ownership to non-root user
 RUN chown -R appuser:appuser /app
@@ -44,8 +43,8 @@ USER appuser
 # Expose port
 EXPOSE 8081
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# Health check (includes database connectivity validation)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8081/payments/health || exit 1
 
 # Run the application
