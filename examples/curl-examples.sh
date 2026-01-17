@@ -3,10 +3,10 @@
 # Example curl commands to test payment-service endpoints
 # Make sure to replace the API_KEY and USER_ID with actual values
 
-API_KEY="your_api_key_here"
+API_KEY="1fafe5b03ef9fe13a767b42a9e0b43a72e6bd5fcb39b33271c068b5e884928ce"
 PAYMENT_SERVICE_URL="http://localhost:8081"
 TENANT_ID="menuum"
-USER_ID="cognito_user_id_here"
+USER_ID="787cc9de-2071-7007-6d59-805abc0dfc20"
 
 echo "==================================================="
 echo "Payment Service API Examples"

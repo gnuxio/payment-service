@@ -26,10 +26,10 @@ func (c *Client) GetPriceID(plan models.Plan) (string, error) {
 	switch plan {
 	case models.PlanPremiumMonthly:
 		// Replace with actual Stripe Price ID for monthly plan
-		return "price_premium_monthly", nil
+		return "price_1SqQiMEOzQkrhqSSgh3KVRps", nil
 	case models.PlanPremiumYearly:
 		// Replace with actual Stripe Price ID for yearly plan
-		return "price_premium_yearly", nil
+		return "price_1SqQjcEOzQkrhqSSLqO5rDdb", nil
 	default:
 		return "", fmt.Errorf("invalid plan: %s", plan)
 	}

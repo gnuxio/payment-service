@@ -48,7 +48,27 @@ Este proyecto incluye ejemplos de integración y scripts de prueba:
 
 - **`examples/menuum-backend-integration.py`** - Código de ejemplo completo para integrar con menuum-backend (Python/FastAPI)
 - **`examples/curl-examples.sh`** - Script con ejemplos de curl para probar todos los endpoints
+- **`postman_collection.json`** - Colección de Postman con todos los endpoints
+- **`postman_environment.json`** - Variables de entorno para Postman
 - **`CHANGELOG.md`** - Registro de cambios del proyecto
+
+### Uso con Postman
+
+1. **Importar la colección**: En Postman, ve a Import → File → Selecciona `postman_collection.json`
+2. **Importar el entorno**: Import → File → Selecciona `postman_environment.json`
+3. **Configurar variables**:
+   - Selecciona el entorno "Payment Service - Local"
+   - Edita el `api_key` con tu API key real del archivo `.env`
+   - Ajusta `base_url` si es necesario (por defecto: `http://localhost:8081`)
+   - Ajusta `tenant_id` según tu aplicación (por defecto: `menuum`)
+4. **Probar endpoints**: Los requests incluyen tests automáticos y ejemplos de datos
+
+La colección incluye:
+- Health check
+- Crear sesión de checkout (planes mensual y anual)
+- Consultar estado de suscripción
+- Cancelar suscripción
+- Webhook de Stripe (con ejemplo de payload)
 
 ## Configuración de Stripe
 
@@ -167,7 +187,7 @@ docker run -d \
 
 ```bash
 # Cargar variables de entorno
-export $(cat .env | xargs)
+source .env
 
 # Ejecutar
 go run cmd/server/main.go
@@ -439,3 +459,13 @@ Este es un proyecto privado de Naventro. Para cambios, contacta al equipo.
 ## Licencia
 
 Privado - Naventro © 2026
+
+
+fujo de Usuario:
+1. Usuario hace clic en "Suscribirse a Premium" en frontend
+2. Frontend llama POST /api/v1/subscription/checkout en menuum-backend
+3. menuum-backend llama al payment-service para crear sesión de Stripe
+4. Usuario es redirigido a página de pago de Stripe
+5. Después del pago exitoso, Stripe notifica al payment-service via webhook (podemos hacer que stripe notifique al menuum-backend? Es que la idea sería que el backend de pagos sea completamente privado y esté solo en la red interna)
+6. payment-service actualiza su BD y notifica a menuum-backend via webhook
+7. menuum-backend actualiza is_premium = true y envía email de confirmación

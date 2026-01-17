@@ -1,0 +1,333 @@
+{
+	"info": {
+		"_postman_id": "payment-service-collection",
+		"name": "Payment Service API",
+		"description": "Colección de endpoints para el microservicio de pagos con Stripe.\n\nAntes de usar:\n1. Configura las variables de entorno (base_url, api_key, tenant_id)\n2. Para endpoints protegidos, asegúrate de tener el API key correcto\n3. Los planes válidos son: premium_monthly, premium_yearly",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has status field\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('status');",
+							"    pm.expect(jsonData.status).to.eql('healthy');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/payments/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"payments",
+						"health"
+					]
+				},
+				"description": "Endpoint público para verificar el estado del servicio."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Checkout Session",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has session_id and session_url\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('session_id');",
+							"    pm.expect(jsonData).to.have.property('session_url');",
+							"});",
+							"",
+							"// Guardar session_id para futuras referencias",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"last_session_id\", jsonData.session_id);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Tenant-ID",
+						"value": "{{tenant_id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\": \"user_123\",\n    \"plan\": \"premium_monthly\",\n    \"success_url\": \"https://yourapp.com/success\",\n    \"cancel_url\": \"https://yourapp.com/cancel\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/payments/checkout",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"payments",
+						"checkout"
+					]
+				},
+				"description": "Crea una sesión de checkout de Stripe para que el usuario complete el pago.\n\n**Headers requeridos:**\n- X-API-Key: API key del servicio\n- X-Tenant-ID: Identificador del tenant (ej: \"menuum\")\n\n**Body:**\n- user_id: ID único del usuario\n- plan: \"premium_monthly\" o \"premium_yearly\"\n- success_url: URL de redirección después de pago exitoso\n- cancel_url: URL de redirección si el usuario cancela"
+			},
+			"response": []
+		},
+		{
+			"name": "Create Checkout Session - Yearly Plan",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Tenant-ID",
+						"value": "{{tenant_id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\": \"user_123\",\n    \"plan\": \"premium_yearly\",\n    \"success_url\": \"https://yourapp.com/success\",\n    \"cancel_url\": \"https://yourapp.com/cancel\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/payments/checkout",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"payments",
+						"checkout"
+					]
+				},
+				"description": "Ejemplo de checkout con plan anual."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Subscription Status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 404\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    pm.test(\"Response has subscription data\", function () {",
+							"        var jsonData = pm.response.json();",
+							"        pm.expect(jsonData).to.have.property('user_id');",
+							"        pm.expect(jsonData).to.have.property('status');",
+							"        pm.expect(jsonData).to.have.property('plan');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Tenant-ID",
+						"value": "{{tenant_id}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/payments/subscription/:user_id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"payments",
+						"subscription",
+						":user_id"
+					],
+					"variable": [
+						{
+							"key": "user_id",
+							"value": "user_123",
+							"description": "ID del usuario"
+						}
+					]
+				},
+				"description": "Obtiene el estado de la suscripción de un usuario.\n\n**Headers requeridos:**\n- X-API-Key: API key del servicio\n- X-Tenant-ID: Identificador del tenant\n\n**Path parameters:**\n- user_id: ID del usuario\n\n**Respuesta:**\nRetorna los datos de la suscripción incluyendo:\n- status: active, canceled, past_due, etc.\n- plan: premium_monthly o premium_yearly\n- stripe_customer_id\n- stripe_subscription_id\n- current_period_start/end"
+			},
+			"response": []
+		},
+		{
+			"name": "Cancel Subscription",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response indicates success\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('status');",
+							"    pm.expect(jsonData.status).to.eql('success');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Tenant-ID",
+						"value": "{{tenant_id}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/payments/cancel/:user_id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"payments",
+						"cancel",
+						":user_id"
+					],
+					"variable": [
+						{
+							"key": "user_id",
+							"value": "user_123",
+							"description": "ID del usuario"
+						}
+					]
+				},
+				"description": "Cancela la suscripción de un usuario.\n\n**Headers requeridos:**\n- X-API-Key: API key del servicio\n- X-Tenant-ID: Identificador del tenant\n\n**Path parameters:**\n- user_id: ID del usuario\n\n**Comportamiento:**\n1. Cancela la suscripción en Stripe\n2. Actualiza el estado en la base de datos local\n3. Notifica al backend (menuum-backend) del cambio"
+			},
+			"response": []
+		},
+		{
+			"name": "Stripe Webhook",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Stripe-Signature",
+						"value": "t=1234567890,v1=signature_here",
+						"type": "text",
+						"description": "Firma de Stripe para verificar autenticidad"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"evt_test_webhook\",\n    \"object\": \"event\",\n    \"type\": \"checkout.session.completed\",\n    \"data\": {\n        \"object\": {\n            \"id\": \"cs_test_123\",\n            \"object\": \"checkout.session\",\n            \"customer\": \"cus_test_123\",\n            \"subscription\": \"sub_test_123\",\n            \"metadata\": {\n                \"user_id\": \"user_123\",\n                \"tenant\": \"menuum\",\n                \"plan\": \"premium_monthly\"\n            }\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/payments/webhook",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"payments",
+						"webhook"
+					]
+				},
+				"description": "Endpoint para recibir webhooks de Stripe.\n\n**NOTA:** Este endpoint normalmente es llamado por Stripe, no manualmente.\n\n**Para pruebas locales:**\nUsa Stripe CLI:\n```bash\nstripe listen --forward-to localhost:8081/payments/webhook\nstripe trigger checkout.session.completed\n```\n\n**Eventos soportados:**\n- checkout.session.completed\n- customer.subscription.created\n- customer.subscription.updated\n- customer.subscription.deleted\n- invoice.paid\n- invoice.payment_failed"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "your-api-key-here",
+			"type": "string"
+		},
+		{
+			"key": "tenant_id",
+			"value": "menuum",
+			"type": "string"
+		}
+	]
+}
