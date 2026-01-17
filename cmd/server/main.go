@@ -2,12 +2,14 @@ package main
 
 import (
 	"log"
-	"net/http"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/naventro/payment-service/internal/api/handlers"
+	"github.com/naventro/payment-service/internal/api/routes"
 	"github.com/naventro/payment-service/internal/config"
 	"github.com/naventro/payment-service/internal/database"
-	"github.com/naventro/payment-service/internal/handlers"
-	"github.com/naventro/payment-service/internal/middleware"
 	"github.com/naventro/payment-service/internal/repository"
 	"github.com/naventro/payment-service/internal/stripe"
 	"github.com/naventro/payment-service/internal/webhook"
@@ -42,37 +44,39 @@ func main() {
 	// Initialize webhook client
 	webhookClient := webhook.NewClient(cfg.BackendWebhookURL)
 
-	// Initialize middleware
-	authMiddleware := middleware.NewAuthMiddleware(cfg.APIKey)
+	// Create dependencies container
+	deps := &handlers.Dependencies{
+		Config:        cfg,
+		SubRepo:       subRepo,
+		InvoiceRepo:   invoiceRepo,
+		StripeClient:  stripeClient,
+		WebhookClient: webhookClient,
+	}
 
-	// Initialize handlers
-	healthHandler := handlers.NewHealthHandler()
-	checkoutHandler := handlers.NewCheckoutHandler(stripeClient)
-	webhookHandler := handlers.NewStripeWebhookHandler(
-		cfg.StripeWebhookSecret,
-		subRepo,
-		invoiceRepo,
-		webhookClient,
-	)
-	subscriptionHandler := handlers.NewSubscriptionHandler(subRepo)
-	cancelHandler := handlers.NewCancelHandler(subRepo, stripeClient, webhookClient)
+	// Create Fiber app
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+			return c.Status(code).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		},
+	})
+
+	// Global middleware
+	app.Use(logger.New())
+	app.Use(recover.New())
 
 	// Setup routes
-	mux := http.NewServeMux()
-
-	// Public routes (no authentication)
-	mux.HandleFunc("/payments/health", healthHandler.ServeHTTP)
-	mux.HandleFunc("/payments/webhook", webhookHandler.ServeHTTP)
-
-	// Protected routes (require API key)
-	mux.HandleFunc("/payments/checkout", authMiddleware.Authenticate(checkoutHandler.ServeHTTP))
-	mux.HandleFunc("/payments/subscription/", authMiddleware.Authenticate(subscriptionHandler.ServeHTTP))
-	mux.HandleFunc("/payments/cancel/", authMiddleware.Authenticate(cancelHandler.ServeHTTP))
+	routes.Setup(app, deps)
 
 	// Start server
 	addr := ":" + cfg.Port
 	log.Printf("Starting payment service on port %s", cfg.Port)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := app.Listen(addr); err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}
 }
