@@ -59,10 +59,19 @@ func (c *Client) CreateCheckoutSession(userID, tenant string, plan models.Plan, 
 		},
 		SuccessURL: stripe.String(successURL),
 		CancelURL:  stripe.String(cancelURL),
+		// Metadata for the checkout session
 		Metadata: map[string]string{
 			"user_id": userID,
 			"tenant":  tenant,
 			"plan":    string(plan),
+		},
+		// IMPORTANT: Pass metadata to the subscription that will be created
+		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+			Metadata: map[string]string{
+				"user_id": userID,
+				"tenant":  tenant,
+				"plan":    string(plan),
+			},
 		},
 	}
 
