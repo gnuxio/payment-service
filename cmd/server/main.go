@@ -47,6 +47,7 @@ func main() {
 	// Create dependencies container
 	deps := &handlers.Dependencies{
 		Config:        cfg,
+		DB:            db,
 		SubRepo:       subRepo,
 		InvoiceRepo:   invoiceRepo,
 		StripeClient:  stripeClient,
