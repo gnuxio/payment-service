@@ -287,11 +287,30 @@ func handleInvoicePaymentFailed(event stripe.Event) {
 }
 
 func notifyBackend(deps *Dependencies, userID, status, plan, subscriptionID string) {
+	// Obtener subscription completa de la DB para enviar todos los datos
+	sub, err := deps.SubRepo.GetByStripeSubscriptionID(subscriptionID)
+	if err != nil || sub == nil {
+		log.Printf("Error fetching subscription for webhook: %v", err)
+		// Fallback: enviar sin period data
+		payload := webhook.SubscriptionWebhookPayload{
+			UserID:         userID,
+			Status:         status,
+			Plan:           plan,
+			SubscriptionID: subscriptionID,
+		}
+		_ = deps.WebhookClient.NotifySubscriptionChange(payload)
+		return
+	}
+
+	// Enviar payload completo con todos los datos
 	payload := webhook.SubscriptionWebhookPayload{
-		UserID:         userID,
-		Status:         status,
-		Plan:           plan,
-		SubscriptionID: subscriptionID,
+		UserID:             userID,
+		Status:             status,
+		Plan:               plan,
+		SubscriptionID:     subscriptionID,
+		CurrentPeriodStart: sub.CurrentPeriodStart,
+		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
 	}
 
 	if err := deps.WebhookClient.NotifySubscriptionChange(payload); err != nil {
