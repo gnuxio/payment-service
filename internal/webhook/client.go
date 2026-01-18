@@ -21,7 +21,6 @@ type SubscriptionWebhookPayload struct {
 	SubscriptionID      string     `json:"subscription_id"`
 	CurrentPeriodStart  *time.Time `json:"current_period_start"`
 	CurrentPeriodEnd    *time.Time `json:"current_period_end"`
-	CancelAtPeriodEnd   bool       `json:"cancel_at_period_end"`
 }
 
 func NewClient(baseURL string) *Client {
