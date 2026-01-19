@@ -117,12 +117,28 @@ func (c *Client) getOrCreateCustomer(userID, tenant string) (string, error) {
 	return cust.ID, nil
 }
 
-// CancelSubscription cancels a Stripe subscription
+// CancelSubscription schedules a Stripe subscription to cancel at period end
+// This allows the user to keep access until the end of their billing period
 func (c *Client) CancelSubscription(subscriptionID string) (*stripe.Subscription, error) {
-	params := &stripe.SubscriptionCancelParams{}
-	sub, err := subscription.Cancel(subscriptionID, params)
+	params := &stripe.SubscriptionParams{
+		CancelAtPeriodEnd: stripe.Bool(true),
+	}
+	sub, err := subscription.Update(subscriptionID, params)
 	if err != nil {
-		return nil, fmt.Errorf("error canceling subscription: %w", err)
+		return nil, fmt.Errorf("error scheduling subscription cancellation: %w", err)
+	}
+
+	return sub, nil
+}
+
+// ReactivateSubscription removes the scheduled cancellation for a subscription
+func (c *Client) ReactivateSubscription(subscriptionID string) (*stripe.Subscription, error) {
+	params := &stripe.SubscriptionParams{
+		CancelAtPeriodEnd: stripe.Bool(false),
+	}
+	sub, err := subscription.Update(subscriptionID, params)
+	if err != nil {
+		return nil, fmt.Errorf("error reactivating subscription: %w", err)
 	}
 
 	return sub, nil

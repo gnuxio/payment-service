@@ -310,6 +310,7 @@ func notifyBackend(deps *Dependencies, userID, status, plan, subscriptionID stri
 		SubscriptionID:     subscriptionID,
 		CurrentPeriodStart: sub.CurrentPeriodStart,
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
 	}
 
 	if err := deps.WebhookClient.NotifySubscriptionChange(payload); err != nil {

@@ -9,8 +9,8 @@ import (
 	"github.com/naventro/payment-service/internal/webhook"
 )
 
-// NewCancelHandler creates a Fiber handler for canceling subscriptions
-func NewCancelHandler(deps *Dependencies) fiber.Handler {
+// NewReactivateHandler creates a Fiber handler for reactivating canceled subscriptions
+func NewReactivateHandler(deps *Dependencies) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Get tenant from locals (set by middleware)
 		tenant := c.Locals("tenant").(string)
@@ -31,24 +31,24 @@ func NewCancelHandler(deps *Dependencies) fiber.Handler {
 			return dto.SendError(c, fiber.StatusNotFound, "Subscription not found")
 		}
 
-		// Check if subscription is already canceled or scheduled for cancellation
-		if subscription.Status == models.StatusCanceled {
-			return dto.SendError(c, fiber.StatusBadRequest, "Subscription is already canceled")
+		// Check if subscription is active and scheduled for cancellation
+		if subscription.Status != models.StatusActive {
+			return dto.SendError(c, fiber.StatusBadRequest, "Subscription is not active")
 		}
 
-		if subscription.CancelAtPeriodEnd {
-			return dto.SendError(c, fiber.StatusBadRequest, "Subscription is already scheduled for cancellation")
+		if !subscription.CancelAtPeriodEnd {
+			return dto.SendError(c, fiber.StatusBadRequest, "Subscription is not scheduled for cancellation")
 		}
 
-		// Schedule cancellation at period end in Stripe
-		_, err = deps.StripeClient.CancelSubscription(subscription.StripeSubscriptionID)
+		// Reactivate subscription in Stripe
+		_, err = deps.StripeClient.ReactivateSubscription(subscription.StripeSubscriptionID)
 		if err != nil {
-			log.Printf("Error scheduling Stripe subscription cancellation: %v", err)
-			return dto.SendError(c, fiber.StatusInternalServerError, "Error canceling subscription")
+			log.Printf("Error reactivating Stripe subscription: %v", err)
+			return dto.SendError(c, fiber.StatusInternalServerError, "Error reactivating subscription")
 		}
 
-		// Update subscription in database - status remains "active" but cancel_at_period_end = true
-		subscription.CancelAtPeriodEnd = true
+		// Update subscription in database
+		subscription.CancelAtPeriodEnd = false
 		if err := deps.SubRepo.Update(subscription); err != nil {
 			log.Printf("Error updating subscription: %v", err)
 			return dto.SendError(c, fiber.StatusInternalServerError, "Error updating subscription")
@@ -71,7 +71,7 @@ func NewCancelHandler(deps *Dependencies) fiber.Handler {
 
 		return dto.SendSuccess(c, fiber.StatusOK, fiber.Map{
 			"status":  "success",
-			"message": "Subscription scheduled for cancellation at period end",
+			"message": "Subscription reactivated successfully",
 		})
 	}
 }

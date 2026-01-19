@@ -22,4 +22,7 @@ func setupProtectedRoutes(router fiber.Router, deps *handlers.Dependencies) {
 
 	// Cancel endpoint
 	protected.Post("/cancel/:userID", handlers.NewCancelHandler(deps))
+
+	// Reactivate endpoint
+	protected.Post("/reactivate/:userID", handlers.NewReactivateHandler(deps))
 }
