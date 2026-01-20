@@ -10,6 +10,7 @@ import (
 	"github.com/naventro/payment-service/internal/models"
 	"github.com/naventro/payment-service/internal/webhook"
 	"github.com/stripe/stripe-go/v84"
+	"github.com/stripe/stripe-go/v84/customer"
 	stripewebhook "github.com/stripe/stripe-go/v84/webhook"
 )
 
@@ -56,6 +57,21 @@ func NewWebhookHandler(deps *Dependencies) fiber.Handler {
 
 		return dto.SendSuccess(c, fiber.StatusOK, fiber.Map{"status": "success"})
 	}
+}
+
+// getCustomerEmail retrieves the email from a Stripe customer
+func getCustomerEmail(customerID string) string {
+	if customerID == "" {
+		return ""
+	}
+
+	cust, err := customer.Get(customerID, nil)
+	if err != nil {
+		log.Printf("Error fetching customer email: %v", err)
+		return ""
+	}
+
+	return cust.Email
 }
 
 func handleCheckoutSessionCompleted(event stripe.Event) {
@@ -118,8 +134,11 @@ func handleSubscriptionCreated(deps *Dependencies, event stripe.Event) {
 		return
 	}
 
+	// Get customer email
+	email := getCustomerEmail(sub.Customer.ID)
+
 	// Notify backend
-	notifyBackend(deps, userID, string(subscription.Status), plan, sub.ID)
+	notifyBackend(deps, userID, email, string(subscription.Status), plan, sub.ID)
 
 	log.Printf("Subscription created successfully for user %s", userID)
 }
@@ -161,8 +180,11 @@ func handleSubscriptionUpdated(deps *Dependencies, event stripe.Event) {
 		return
 	}
 
+	// Get customer email
+	email := getCustomerEmail(sub.Customer.ID)
+
 	// Notify backend
-	notifyBackend(deps, existingSub.UserID, string(existingSub.Status), string(existingSub.Plan), sub.ID)
+	notifyBackend(deps, existingSub.UserID, email, string(existingSub.Status), string(existingSub.Plan), sub.ID)
 
 	log.Printf("Subscription updated successfully: %s", sub.ID)
 }
@@ -194,8 +216,11 @@ func handleSubscriptionDeleted(deps *Dependencies, event stripe.Event) {
 		return
 	}
 
+	// Get customer email
+	email := getCustomerEmail(sub.Customer.ID)
+
 	// Notify backend
-	notifyBackend(deps, existingSub.UserID, "canceled", string(existingSub.Plan), sub.ID)
+	notifyBackend(deps, existingSub.UserID, email, "canceled", string(existingSub.Plan), sub.ID)
 
 	log.Printf("Subscription deleted successfully: %s", sub.ID)
 }
@@ -286,7 +311,7 @@ func handleInvoicePaymentFailed(event stripe.Event) {
 	log.Printf("Invoice payment failed: %s", invoice.ID)
 }
 
-func notifyBackend(deps *Dependencies, userID, status, plan, subscriptionID string) {
+func notifyBackend(deps *Dependencies, userID, email, status, plan, subscriptionID string) {
 	// Obtener subscription completa de la DB para enviar todos los datos
 	sub, err := deps.SubRepo.GetByStripeSubscriptionID(subscriptionID)
 	if err != nil || sub == nil {
@@ -294,6 +319,7 @@ func notifyBackend(deps *Dependencies, userID, status, plan, subscriptionID stri
 		// Fallback: enviar sin period data
 		payload := webhook.SubscriptionWebhookPayload{
 			UserID:         userID,
+			Email:          email,
 			Status:         status,
 			Plan:           plan,
 			SubscriptionID: subscriptionID,
@@ -305,6 +331,7 @@ func notifyBackend(deps *Dependencies, userID, status, plan, subscriptionID stri
 	// Enviar payload completo con todos los datos
 	payload := webhook.SubscriptionWebhookPayload{
 		UserID:             userID,
+		Email:              email,
 		Status:             status,
 		Plan:               plan,
 		SubscriptionID:     subscriptionID,

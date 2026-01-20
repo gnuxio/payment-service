@@ -16,6 +16,7 @@ type Client struct {
 
 type SubscriptionWebhookPayload struct {
 	UserID              string     `json:"user_id"`
+	Email               string     `json:"email"`
 	Status              string     `json:"status"`
 	Plan                string     `json:"plan"`
 	SubscriptionID      string     `json:"subscription_id"`
