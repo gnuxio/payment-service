@@ -7,7 +7,6 @@ import (
 	"github.com/naventro/payment-service/internal/api/dto"
 	"github.com/naventro/payment-service/internal/models"
 	"github.com/naventro/payment-service/internal/webhook"
-	"github.com/stripe/stripe-go/v84/customer"
 )
 
 // NewReactivateHandler creates a Fiber handler for reactivating canceled subscriptions
