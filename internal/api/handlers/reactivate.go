@@ -7,6 +7,7 @@ import (
 	"github.com/naventro/payment-service/internal/api/dto"
 	"github.com/naventro/payment-service/internal/models"
 	"github.com/naventro/payment-service/internal/webhook"
+	"github.com/stripe/stripe-go/v84/customer"
 )
 
 // NewReactivateHandler creates a Fiber handler for reactivating canceled subscriptions
@@ -54,9 +55,13 @@ func NewReactivateHandler(deps *Dependencies) fiber.Handler {
 			return dto.SendError(c, fiber.StatusInternalServerError, "Error updating subscription")
 		}
 
+		// Get customer email from Stripe
+		email := getCustomerEmail(subscription.StripeCustomerID)
+
 		// Notify backend with complete payload
 		payload := webhook.SubscriptionWebhookPayload{
 			UserID:             userID,
+			Email:              email,
 			Status:             string(subscription.Status),
 			Plan:               string(subscription.Plan),
 			SubscriptionID:     subscription.StripeSubscriptionID,
